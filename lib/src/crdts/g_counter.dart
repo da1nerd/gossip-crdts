@@ -84,6 +84,9 @@ class GCounter implements CRDT<int> {
   /// Get the list of nodes that have incremented this counter.
   List<String> get nodes => _counters.keys.toList();
 
+  /// Check if the counter is empty (has no increments).
+  bool get isEmpty => _counters.isEmpty;
+
   /// Increment the counter for a specific node.
   ///
   /// This is typically called internally by the CRDT manager when applying
@@ -126,10 +129,10 @@ class GCounter implements CRDT<int> {
 
   @override
   Map<String, dynamic> getState() => {
-    'type': type,
-    'id': id,
-    'counters': Map<String, int>.from(_counters),
-  };
+        'type': type,
+        'id': id,
+        'counters': Map<String, int>.from(_counters),
+      };
 
   @override
   void mergeState(Map<String, dynamic> otherState) {
@@ -190,8 +193,6 @@ class GCounter implements CRDT<int> {
 
   @override
   void validate() {
-    super.validate();
-
     // Ensure all counter values are non-negative
     for (final entry in _counters.entries) {
       if (entry.value < 0) {

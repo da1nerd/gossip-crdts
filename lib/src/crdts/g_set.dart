@@ -136,10 +136,10 @@ class GSet<T> implements CRDT<Set<T>> {
 
   @override
   Map<String, dynamic> getState() => {
-    'type': type,
-    'id': id,
-    'elements': _elements.toList(),
-  };
+        'type': type,
+        'id': id,
+        'elements': _elements.toList(),
+      };
 
   @override
   void mergeState(Map<String, dynamic> otherState) {
@@ -192,6 +192,11 @@ class GSet<T> implements CRDT<Set<T>> {
   @override
   void reset() {
     _elements.clear();
+  }
+
+  @override
+  void validate() {
+    // No additional validation needed for a simple set
   }
 
   /// Check if this set is a subset of another set.

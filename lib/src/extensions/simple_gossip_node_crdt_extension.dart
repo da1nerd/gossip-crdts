@@ -5,6 +5,7 @@
 /// original gossip protocol library.
 library;
 
+import 'dart:async';
 import 'package:gossip/gossip.dart';
 
 import '../crdt_manager.dart';
@@ -471,7 +472,8 @@ class CRDTEnabledSimpleGossipNode {
     String crdtId,
     String operation,
     Map<String, dynamic> data,
-  ) => _crdtManager.performOperation(crdtId, operation, data);
+  ) =>
+      _crdtManager.performOperation(crdtId, operation, data);
 
   /// Synchronize all CRDT states.
   Future<void> syncAllCRDTs() => _crdtManager.syncAll();
@@ -492,8 +494,7 @@ class CRDTEnabledSimpleGossipNode {
   }
 
   @override
-  String toString() =>
-      'CRDTEnabledSimpleGossipNode(nodeId: $nodeId, '
+  String toString() => 'CRDTEnabledSimpleGossipNode(nodeId: $nodeId, '
       'crdtCount: ${getCRDTIds().length})';
 }
 
@@ -512,8 +513,7 @@ class SimpleCRDTManagerStats {
   });
 
   @override
-  String toString() =>
-      'SimpleCRDTManagerStats(totalCRDTs: $totalCRDTs, '
+  String toString() => 'SimpleCRDTManagerStats(totalCRDTs: $totalCRDTs, '
       'crdtTypes: $crdtTypes, isInitialized: $isInitialized, '
       'isClosed: $isClosed)';
 }

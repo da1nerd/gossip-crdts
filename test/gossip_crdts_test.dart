@@ -311,6 +311,254 @@ void main() {
         expect(set1.isSupersetOf({'banana'}), isTrue);
       });
     });
+
+    group('ORSet', () {
+      test('should create empty set', () {
+        final set = ORSet<String>('test-or-set');
+        expect(set.id, equals('test-or-set'));
+        expect(set.type, equals('ORSet'));
+        expect(set.value, isEmpty);
+        expect(set.size, equals(0));
+        expect(set.isEmpty, isTrue);
+      });
+
+      test('should add and remove elements', () {
+        final set = ORSet<String>('test-or-set');
+        set.add('apple', 'node1');
+        set.add('banana', 'node1');
+
+        expect(set.size, equals(2));
+        expect(set.contains('apple'), isTrue);
+        expect(set.contains('banana'), isTrue);
+
+        set.remove('apple');
+        expect(set.size, equals(1));
+        expect(set.contains('apple'), isFalse);
+        expect(set.contains('banana'), isTrue);
+      });
+
+      test('should handle concurrent add/remove correctly', () {
+        final set1 = ORSet<String>('test-or-set');
+        final set2 = ORSet<String>('test-or-set');
+
+        // Both add apple
+        set1.add('apple', 'node1');
+        set2.add('apple', 'node2');
+
+        // Node1 removes apple (but only sees its own add)
+        set1.remove('apple');
+
+        // Merge states - apple should still exist because node2's add wasn't observed
+        set1.mergeState(set2.getState());
+        expect(set1.contains('apple'), isTrue);
+      });
+    });
+
+    group('LWWRegister', () {
+      test('should create register with null initial value', () {
+        final register = LWWRegister<String>('test-register');
+        expect(register.id, equals('test-register'));
+        expect(register.type, equals('LWWRegister'));
+        expect(register.value, isNull);
+        expect(register.isEmpty, isTrue);
+      });
+
+      test('should set and get values', () {
+        final register = LWWRegister<String>('test-register');
+        register.set('hello', DateTime.now().millisecondsSinceEpoch, 'node1');
+
+        expect(register.value, equals('hello'));
+        expect(register.hasValue, isTrue);
+        expect(register.isEmpty, isFalse);
+        expect(register.nodeId, equals('node1'));
+      });
+
+      test('should resolve conflicts with timestamps', () {
+        final register = LWWRegister<String>('test-register');
+        final now = DateTime.now().millisecondsSinceEpoch;
+
+        register.set('first', now, 'node1');
+        register.set('second', now + 1000, 'node2'); // Later timestamp wins
+
+        expect(register.value, equals('second'));
+        expect(register.nodeId, equals('node2'));
+      });
+
+      test('should resolve timestamp ties with node ID', () {
+        final register = LWWRegister<String>('test-register');
+        final now = DateTime.now().millisecondsSinceEpoch;
+
+        register.set('first', now, 'node1');
+        register.set('second', now, 'node2'); // node2 > node1 lexicographically
+
+        expect(register.value, equals('second'));
+        expect(register.nodeId, equals('node2'));
+      });
+    });
+
+    group('MVRegister', () {
+      test('should create register with no initial values', () {
+        final register = MVRegister<String>('test-mv-register');
+        expect(register.id, equals('test-mv-register'));
+        expect(register.type, equals('MVRegister'));
+        expect(register.value, isEmpty);
+        expect(register.isEmpty, isTrue);
+        expect(register.hasConflict, isFalse);
+      });
+
+      test('should store single value without conflict', () {
+        final register = MVRegister<String>('test-mv-register');
+        register.set('hello', {'node1': 1});
+
+        expect(register.values, equals({'hello'}));
+        expect(register.singleValue, equals('hello'));
+        expect(register.hasConflict, isFalse);
+      });
+
+      test('should preserve concurrent values', () {
+        final register = MVRegister<String>('test-mv-register');
+
+        register.set('value1', {'node1': 1});
+        register.set('value2', {'node2': 1}); // Concurrent
+
+        expect(register.values, containsAll(['value1', 'value2']));
+        expect(register.hasConflict, isTrue);
+        expect(register.singleValue, isNull);
+      });
+    });
+
+    group('LWWMap', () {
+      test('should create empty map', () {
+        final map = LWWMap<String, String>('test-lww-map');
+        expect(map.id, equals('test-lww-map'));
+        expect(map.type, equals('LWWMap'));
+        expect(map.value, isEmpty);
+        expect(map.isEmpty, isTrue);
+      });
+
+      test('should put and get values', () {
+        final map = LWWMap<String, String>('test-lww-map');
+        final now = DateTime.now().millisecondsSinceEpoch;
+
+        map.put('key1', 'value1', now, 'node1');
+        map.put('key2', 'value2', now + 1000, 'node1');
+
+        expect(map['key1'], equals('value1'));
+        expect(map['key2'], equals('value2'));
+        expect(map.length, equals(2));
+        expect(map.containsKey('key1'), isTrue);
+        expect(map.containsKey('key3'), isFalse);
+      });
+
+      test('should handle remove operations', () {
+        final map = LWWMap<String, String>('test-lww-map');
+        final now = DateTime.now().millisecondsSinceEpoch;
+
+        map.put('key1', 'value1', now, 'node1');
+        map.remove('key1', now + 1000, 'node1');
+
+        expect(map.containsKey('key1'), isFalse);
+        expect(map.length, equals(0));
+      });
+
+      test('should resolve conflicts with timestamps', () {
+        final map = LWWMap<String, String>('test-lww-map');
+        final now = DateTime.now().millisecondsSinceEpoch;
+
+        map.put('key1', 'old_value', now, 'node1');
+        map.put('key1', 'new_value', now + 1000, 'node2');
+
+        expect(map['key1'], equals('new_value'));
+      });
+    });
+
+    group('RGAArray', () {
+      test('should create empty array', () {
+        final array = RGAArray<String>('test-rga');
+        expect(array.id, equals('test-rga'));
+        expect(array.type, equals('RGAArray'));
+        expect(array.value, isEmpty);
+        expect(array.length, equals(0));
+        expect(array.isEmpty, isTrue);
+      });
+
+      test('should insert and retrieve elements', () {
+        final array = RGAArray<String>('test-rga');
+
+        array.insert(0, 'H', 'node1');
+        array.insert(1, 'i', 'node1');
+
+        expect(array.length, equals(2));
+        expect(array[0], equals('H'));
+        expect(array[1], equals('i'));
+        expect(array.toList(), equals(['H', 'i']));
+      });
+
+      test('should handle insertions and deletions', () {
+        final array = RGAArray<String>('test-rga');
+
+        array.insert(0, 'a', 'node1');
+        array.insert(1, 'b', 'node1');
+        array.insert(2, 'c', 'node1');
+
+        expect(array.toList(), equals(['a', 'b', 'c']));
+
+        array.deleteAt(1); // Delete 'b'
+        expect(array.toList(), equals(['a', 'c']));
+      });
+
+      test('should support text editing operations', () {
+        final array = RGAArray<String>('test-text');
+
+        array.insertText(0, 'Hello', 'node1');
+        expect(array.getText(), equals('Hello'));
+
+        array.insertText(5, ' World', 'node1');
+        expect(array.getText(), equals('Hello World'));
+
+        array.deleteRange(5, 11); // Delete ' World'
+        expect(array.getText(), equals('Hello'));
+      });
+    });
+
+    group('EnableWinsFlag', () {
+      test('should create flag with initial false value', () {
+        final flag = EnableWinsFlag('test-flag');
+        expect(flag.id, equals('test-flag'));
+        expect(flag.type, equals('EnableWinsFlag'));
+        expect(flag.value, isFalse);
+        expect(flag.isDisabled, isTrue);
+        expect(flag.isEnabled, isFalse);
+      });
+
+      test('should enable and disable flag', () {
+        final flag = EnableWinsFlag('test-flag');
+
+        expect(flag.enable(), isTrue); // State changed
+        expect(flag.isEnabled, isTrue);
+        expect(flag.value, isTrue);
+
+        expect(flag.enable(), isFalse); // State didn't change
+
+        expect(flag.disable(), isTrue); // State changed
+        expect(flag.isDisabled, isTrue);
+        expect(flag.value, isFalse);
+      });
+
+      test('should make enable win over disable in merge', () {
+        final flag1 = EnableWinsFlag('test-flag');
+        final flag2 = EnableWinsFlag('test-flag');
+
+        flag1.enable();
+        flag2.disable();
+
+        flag1.mergeState(flag2.getState());
+        expect(flag1.isEnabled, isTrue); // Enable wins
+
+        flag2.mergeState(flag1.getState());
+        expect(flag2.isEnabled, isTrue); // Enable wins
+      });
+    });
   });
 
   group('CRDT Storage', () {

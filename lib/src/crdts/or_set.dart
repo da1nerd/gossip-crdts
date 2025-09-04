@@ -167,9 +167,8 @@ class ORSet<T> implements CRDT<Set<T>> {
     if (tags == null || tags.isEmpty) return false;
 
     // Mark all currently observed tags as removed
-    final tagsToRemove = tags
-        .where((tag) => !_removedTags.contains(tag))
-        .toSet();
+    final tagsToRemove =
+        tags.where((tag) => !_removedTags.contains(tag)).toSet();
     _removedTags.addAll(tagsToRemove);
 
     return tagsToRemove.isNotEmpty;
@@ -222,13 +221,14 @@ class ORSet<T> implements CRDT<Set<T>> {
 
   @override
   Map<String, dynamic> getState() => {
-    'type': type,
-    'id': id,
-    'elementTags': _elementTags.map(
-      (element, tags) => MapEntry(_serializeElement(element), tags.toList()),
-    ),
-    'removedTags': _removedTags.toList(),
-  };
+        'type': type,
+        'id': id,
+        'elementTags': _elementTags.map(
+          (element, tags) =>
+              MapEntry(_serializeElement(element), tags.toList()),
+        ),
+        'removedTags': _removedTags.toList(),
+      };
 
   @override
   void mergeState(Map<String, dynamic> otherState) {
@@ -311,8 +311,6 @@ class ORSet<T> implements CRDT<Set<T>> {
 
   @override
   void validate() {
-    super.validate();
-
     // Validate that all removed tags exist in some element's tag set
     final allTags = <String>{};
     for (final tags in _elementTags.values) {
@@ -448,8 +446,7 @@ class ORSet<T> implements CRDT<Set<T>> {
   int get hashCode => super.hashCode;
 
   @override
-  String toString() =>
-      'ORSet<$T>(id: $id, size: $size, '
+  String toString() => 'ORSet<$T>(id: $id, size: $size, '
       'totalTags: ${_elementTags.values.fold(0, (sum, tags) => sum + tags.length)}, '
       'removedTags: ${_removedTags.length})';
 }

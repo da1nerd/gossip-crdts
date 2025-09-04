@@ -155,9 +155,129 @@ print(tags.value); // {'music', 'sports'}
 print('Contains music: ${tags.contains('music')}'); // true
 ```
 
-### More CRDT Types
+#### OR-Set (Observed-Remove Set)
+A set that supports both add and remove operations:
 
-The library is designed to be extensible. Additional CRDT types like OR-Set, LWW-Register, MV-Register, and OR-Map are planned for future releases.
+```dart
+final items = ORSet<String>('shopping-cart');
+await crdtManager.register(items);
+
+await crdtManager.performOperation('shopping-cart', 'add', {'element': 'apple'});
+await crdtManager.performOperation('shopping-cart', 'add', {'element': 'banana'});
+await crdtManager.performOperation('shopping-cart', 'remove', {'element': 'apple'});
+
+print(items.value); // {'banana'}
+```
+
+### Registers
+
+#### LWW-Register (Last-Writer-Wins Register)
+A single-value register where the most recent update wins:
+
+```dart
+final status = LWWRegister<String>('user-status');
+await crdtManager.register(status);
+
+await crdtManager.performOperation('user-status', 'set', {
+  'value': 'online',
+  'timestamp': DateTime.now().millisecondsSinceEpoch,
+});
+print(status.value); // 'online'
+```
+
+#### MV-Register (Multi-Value Register)
+A register that preserves concurrent updates:
+
+```dart
+final config = MVRegister<String>('app-theme');
+await crdtManager.register(config);
+
+// Concurrent updates are preserved
+await crdtManager.performOperation('app-theme', 'set', {
+  'value': 'dark',
+  'vectorClock': {'node1': 1},
+});
+print(config.hasConflict); // true if concurrent updates exist
+print(config.values); // Set of all concurrent values
+```
+
+### Maps
+
+#### LWW-Map (Last-Writer-Wins Map)
+A map where the most recent update wins for each key:
+
+```dart
+final settings = LWWMap<String, String>('user-settings');
+await crdtManager.register(settings);
+
+await crdtManager.performOperation('user-settings', 'put', {
+  'key': 'theme',
+  'value': 'dark',
+  'timestamp': DateTime.now().millisecondsSinceEpoch,
+});
+print(settings['theme']); // 'dark'
+```
+
+#### OR-Map (Observed-Remove Map)
+A map that supports both add and remove operations with CRDT values:
+
+```dart
+final counters = ORMap<String, GCounter>('user-counters', 
+  crdtFactory: (id, type) => GCounter(id));
+await crdtManager.register(counters);
+
+await crdtManager.performOperation('user-counters', 'add', {
+  'key': 'user1',
+  'crdtType': 'GCounter',
+  'crdtId': 'user1-counter'
+});
+```
+
+### Sequences
+
+#### RGA Array (Replicated Growable Array)
+Perfect for collaborative text editing and ordered sequences:
+
+```dart
+final text = RGAArray<String>('shared-document');
+await crdtManager.register(text);
+
+// Insert characters for collaborative text editing
+await crdtManager.performOperation('shared-document', 'insert', {
+  'index': 0,
+  'element': 'H',
+});
+await crdtManager.performOperation('shared-document', 'insert', {
+  'index': 1,
+  'element': 'i',
+});
+
+print(text.getText()); // 'Hi'
+print(text.length); // 2
+
+// Delete characters
+await crdtManager.performOperation('shared-document', 'delete', {
+  'index': 1,
+});
+print(text.getText()); // 'H'
+```
+
+### Flags
+
+#### Enable-Wins Flag
+A boolean flag where enable operations always win over disable operations:
+
+```dart
+final feature = EnableWinsFlag('feature-x-enabled');
+await crdtManager.register(feature);
+
+await crdtManager.performOperation('feature-x-enabled', 'enable', {});
+print(feature.isEnabled); // true
+
+// Even if another node disables concurrently, enable wins
+await crdtManager.performOperation('feature-x-enabled', 'disable', {});
+// After merge, flag remains enabled if any replica enabled it
+```
 
 ## Event Streams and Monitoring
 
@@ -303,6 +423,13 @@ The CRDT extension follows a clean architecture that integrates seamlessly with 
 - **G-Counter**: Use for metrics that only increase (views, downloads, likes)
 - **PN-Counter**: Use for values that can go up or down (votes, scores, inventory)
 - **G-Set**: Use for collections that only grow (tags, features, flags)
+- **OR-Set**: Use for collections that need both add and remove (shopping carts, user lists)
+- **LWW-Register**: Use for single values where latest update should win (user status, configuration)
+- **MV-Register**: Use when you need to detect and handle concurrent updates manually
+- **LWW-Map**: Use for key-value storage where latest update per key should win
+- **OR-Map**: Use for maps with CRDT values that need add/remove operations
+- **RGA Array**: Use for collaborative text editing and ordered sequences
+- **Enable-Wins Flag**: Use for boolean flags where "enabled" should dominate
 
 ### Performance Considerations
 
@@ -364,13 +491,19 @@ See the `/example` directory for complete working examples:
 
 ## Roadmap
 
-- [ ] **OR-Set**: Observed-Remove Set with add and remove operations
-- [ ] **LWW-Register**: Last-Writer-Wins Register for single values
-- [ ] **MV-Register**: Multi-Value Register preserving concurrent updates
-- [ ] **OR-Map**: Observed-Remove Map with CRDT values
+- [x] **OR-Set**: Observed-Remove Set with add and remove operations ✓
+- [x] **LWW-Register**: Last-Writer-Wins Register for single values ✓
+- [x] **MV-Register**: Multi-Value Register preserving concurrent updates ✓
+- [x] **OR-Map**: Observed-Remove Map with CRDT values ✓
+- [x] **LWW-Map**: Last-Writer-Wins Map for key-value storage ✓
+- [x] **RGA Array**: Replicated Growable Array for collaborative text editing ✓
+- [x] **Enable-Wins Flag**: Boolean flag CRDT for feature toggles ✓
+- [ ] **Sequence CRDT**: Generic ordered sequence operations
+- [ ] **Causal Tree**: Alternative text editing CRDT
 - [ ] **File-based Storage**: Built-in file system storage backend
 - [ ] **Compression**: Optional compression for large CRDT states
 - [ ] **Delta Synchronization**: Send only changes instead of full state
+- [ ] **CRDT Factory Registry**: Automatic CRDT reconstruction from state
 
 ## License
 

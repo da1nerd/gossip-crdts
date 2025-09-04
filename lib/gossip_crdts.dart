@@ -54,6 +54,13 @@
 ///
 /// ### Maps
 /// - **ORMap**: Observed-Remove map with CRDT values
+/// - **LWWMap**: Last-Writer-Wins map
+///
+/// ### Sequences
+/// - **RGAArray**: Replicated Growable Array (ideal for text editing)
+///
+/// ### Flags
+/// - **EnableWinsFlag**: Boolean flag where enable operations win
 library gossip_crdts;
 
 // Core CRDT functionality
@@ -71,6 +78,9 @@ export 'src/crdts/or_set.dart';
 export 'src/crdts/lww_register.dart';
 export 'src/crdts/mv_register.dart';
 export 'src/crdts/or_map.dart';
+export 'src/crdts/lww_map.dart';
+export 'src/crdts/rga_array.dart';
+export 'src/crdts/enable_wins_flag.dart';
 
 // Extensions for existing gossip nodes
 export 'src/extensions/gossip_node_crdt_extension.dart';
