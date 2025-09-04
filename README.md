@@ -95,12 +95,13 @@ import 'package:gossip/gossip.dart';
 import 'package:gossip_crdts/gossip_crdts.dart';
 
 void main() async {
-  final simpleNode = SimpleGossipNode(/* ... */);
-  final crdtNode = await simpleNode.withCRDTSupport();
+  final gossipNode = GossipNode(/* ... */);
+  final crdtNode = await gossipNode.withCRDTSupport();
 
-  await crdtNode.start();
+  await crdtNode.initialize();
+  await crdtNode.startGossiping();
 
-  // Use CRDTs with simple gossip protocol
+  // Use CRDTs with gossip protocol
   final set = GSet<String>('user-tags');
   await crdtNode.registerCRDT(set);
   await crdtNode.performCRDTOperation('user-tags', 'add', {'element': 'music'});
@@ -403,8 +404,7 @@ The CRDT extension follows a clean architecture that integrates seamlessly with 
 │  CRDTManager /      │
 │  CRDTEnabledNode    │  ← CRDT coordination layer
 ├─────────────────────┤
-│   GossipNode /      │
-│  SimpleGossipNode   │  ← Existing gossip protocol
+│   GossipNode        │  ← Existing gossip protocol
 ├─────────────────────┤
 │  CRDT Implementations │
 │  - GCounter         │

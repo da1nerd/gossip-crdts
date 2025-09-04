@@ -84,4 +84,3 @@ export 'src/crdts/enable_wins_flag.dart';
 
 // Extensions for existing gossip nodes
 export 'src/extensions/gossip_node_crdt_extension.dart';
-export 'src/extensions/simple_gossip_node_crdt_extension.dart';
